@@ -14,6 +14,12 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.text.Collator;
 import java.util.Locale;
+import javax.swing.JTextArea;
+import javax.swing.JScrollPane;
+import javax.swing.Timer;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.util.Stack;
 
 public class SF extends javax.swing.JFrame {
 
@@ -50,10 +56,20 @@ public class SF extends javax.swing.JFrame {
     private javax.swing.JButton btnStats;
     private javax.swing.JButton btnClear;
     private javax.swing.JButton btnTop;
+    
+    
+    private javax.swing.JButton btnCompare;
+    private javax.swing.JButton btnBulkAdd;
+    private javax.swing.JButton btnRandomStudent;
+    private javax.swing.JButton btnDuplicate;
     private javax.swing.JComboBox<String> cbFilter;
     private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel lblTotal;
     private javax.swing.JLabel lblAverage;
+    private javax.swing.JLabel lblStatus;
+    private javax.swing.JCheckBox chkAutoSave;
+    private javax.swing.JTextField txtQuickFilter;
 
     List<Student> list = new ArrayList<Student>();
     static int pos = 0;
@@ -62,6 +78,14 @@ public class SF extends javax.swing.JFrame {
     JPanel panel;
 
     private final Collator vietnameseCollator;
+    
+    
+    // Tính năng tự động lưu
+    private Timer autoSaveTimer;
+    private boolean hasUnsavedChanges = false;
+    
+    // Tính năng so sánh sinh viên
+    private Student comparisonStudent = null;
 
     public SF() {
         vietnameseCollator = Collator.getInstance(new Locale("vi", "VN"));
@@ -69,7 +93,7 @@ public class SF extends javax.swing.JFrame {
 
         initComponents();
 
-        this.setSize(1350, 750);
+        this.setSize(1400, 800);
         this.setLocationRelativeTo(null);
         this.setResizable(true);
         
@@ -78,6 +102,7 @@ public class SF extends javax.swing.JFrame {
         this.jPanel3.setBackground(Color.WHITE);
 
         loadList();
+        
 
         if (!list.isEmpty()) {
             list.sort(new Comparator<Student>() {
@@ -102,6 +127,17 @@ public class SF extends javax.swing.JFrame {
         View();
         ViewTable(this.txtSearchName.getText());
         updateStatistics();
+        
+        // Khởi tạo timer tự động lưu (mỗi 30 giây)
+        autoSaveTimer = new Timer(30000, e -> {
+            if (chkAutoSave.isSelected() && hasUnsavedChanges) {
+                autoSave();
+            }
+        });
+        autoSaveTimer.start();
+        
+        // Thêm listener cho tìm kiếm nhanh
+        setupQuickFilter();
     }
 
     public void loadList() {
@@ -110,6 +146,253 @@ public class SF extends javax.swing.JFrame {
         list.add(new Student("2222", "Trần Thị Mai", 20, 9, 9, 9));
         list.add(new Student("3333", "Lê Thảo Mai", 21, 8.5, 7, 8));
         list.add(new Student("4444", "Nguyễn Thị Ánh", 22, 10, 10, 10));
+        list.add(new Student("5555", "Phạm Minh Tuấn", 24, 7, 6, 7));
+        list.add(new Student("6666", "Hoàng Thị Lan", 19, 8, 8.5, 9));
+    }
+
+   
+    // ========== TÍNH NĂNG TỰ ĐỘNG LƯU ==========
+    private void autoSave() {
+        updateStatus("Đã tự động lưu...");
+        hasUnsavedChanges = false;
+        
+        Timer statusTimer = new Timer(2000, e -> updateStatus(""));
+        statusTimer.setRepeats(false);
+        statusTimer.start();
+    }
+
+    private void markAsChanged() {
+        hasUnsavedChanges = true;
+    }
+
+    // ========== TÍNH NĂNG SO SÁNH SINH VIÊN ==========
+    private void compareStudents() {
+        if (list.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Không có sinh viên để so sánh!", 
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        if (comparisonStudent == null) {
+            comparisonStudent = list.get(pos);
+            updateStatus("Đã chọn " + comparisonStudent.getName() + " để so sánh. Chọn sinh viên thứ 2.");
+            btnCompare.setText("❌ Hủy so sánh");
+        } else {
+            Student currentStudent = list.get(pos);
+            if (comparisonStudent.equals(currentStudent)) {
+                JOptionPane.showMessageDialog(this, "Không thể so sánh cùng một sinh viên!", 
+                    "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            showComparisonDialog(comparisonStudent, currentStudent);
+            comparisonStudent = null;
+            btnCompare.setText("⚖️ So sánh");
+            updateStatus("");
+        }
+    }
+
+    private void showComparisonDialog(Student s1, Student s2) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("══════════════════════════════════════════════════\n");
+        sb.append("           SO SÁNH HAI SINH VIÊN\n");
+        sb.append("══════════════════════════════════════════════════\n\n");
+        
+        sb.append(String.format("%-25s | %-25s\n", s1.getName(), s2.getName()));
+        sb.append(String.format("%-25s | %-25s\n", "Mã: " + s1.getId(), "Mã: " + s2.getId()));
+        sb.append(String.format("%-25s | %-25s\n", "Tuổi: " + s1.getAge(), "Tuổi: " + s2.getAge()));
+        sb.append("──────────────────────────────────────────────────\n");
+        sb.append(String.format("%-25s | %-25s\n", 
+            "Điểm CC: " + s1.getDiemCC(), "Điểm CC: " + s2.getDiemCC()));
+        sb.append(String.format("%-25s | %-25s\n", 
+            "Điểm GK: " + s1.getDiemGK(), "Điểm GK: " + s2.getDiemGK()));
+        sb.append(String.format("%-25s | %-25s\n", 
+            "Điểm CK: " + s1.getDiemCK(), "Điểm CK: " + s2.getDiemCK()));
+        sb.append("──────────────────────────────────────────────────\n");
+        sb.append(String.format("%-25s | %-25s\n", 
+            "Tổng điểm: " + s1.getTongDiem(), "Tổng điểm: " + s2.getTongDiem()));
+        sb.append(String.format("%-25s | %-25s\n", 
+            "Xếp loại: " + s1.getXepLoai(), "Xếp loại: " + s2.getXepLoai()));
+        sb.append("\n");
+        
+        double diff = s1.getTongDiemAsDouble() - s2.getTongDiemAsDouble();
+        if (diff > 0) {
+            sb.append(String.format("%s cao hơn %.2f điểm", s1.getName(), diff));
+        } else if (diff < 0) {
+            sb.append(String.format("%s cao hơn %.2f điểm", s2.getName(), -diff));
+        } else {
+            sb.append("Hai sinh viên có điểm bằng nhau");
+        }
+        
+        JTextArea textArea = new JTextArea(sb.toString());
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
+        textArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new java.awt.Dimension(550, 350));
+        
+        JOptionPane.showMessageDialog(this, scrollPane, "So sánh sinh viên", 
+            JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // ========== TÍNH NĂNG THÊM HÀNG LOẠT ==========
+    private void bulkAddStudents() {
+        String input = JOptionPane.showInputDialog(this, 
+            "Nhập thông tin sinh viên (mỗi dòng 1 sinh viên):\n" +
+            "Định dạng: Mã SV, Họ tên, Tuổi, Điểm CC, Điểm GK, Điểm CK\n" +
+            "Ví dụ: 7777, Nguyễn Văn A, 20, 8, 8.5, 9\n\n" +
+            "Nhập nhiều sinh viên (mỗi dòng một sinh viên):", 
+            "Thêm hàng loạt", JOptionPane.PLAIN_MESSAGE);
+        
+        if (input == null || input.trim().isEmpty()) {
+            return;
+        }
+        
+        String[] lines = input.split("\n");
+        int successCount = 0;
+        int errorCount = 0;
+        StringBuilder errors = new StringBuilder();
+        
+        
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty()) continue;
+            
+            try {
+                String[] parts = line.split(",");
+                if (parts.length != 6) {
+                    errors.append("Dòng ").append(i + 1).append(": Thiếu thông tin\n");
+                    errorCount++;
+                    continue;
+                }
+                
+                String id = parts[0].trim();
+                String name = parts[1].trim();
+                int age = Integer.parseInt(parts[2].trim());
+                double diemCC = Double.parseDouble(parts[3].trim());
+                double diemGK = Double.parseDouble(parts[4].trim());
+                double diemCK = Double.parseDouble(parts[5].trim());
+                
+                if (Search(id) != null) {
+                    errors.append("Dòng ").append(i + 1).append(": Mã SV đã tồn tại\n");
+                    errorCount++;
+                    continue;
+                }
+                
+                if (age < 18 || age > 100) {
+                    errors.append("Dòng ").append(i + 1).append(": Tuổi không hợp lệ\n");
+                    errorCount++;
+                    continue;
+                }
+                
+                if (diemCC < 0 || diemCC > 10 || diemGK < 0 || diemGK > 10 || 
+                    diemCK < 0 || diemCK > 10) {
+                    errors.append("Dòng ").append(i + 1).append(": Điểm không hợp lệ\n");
+                    errorCount++;
+                    continue;
+                }
+                
+                list.add(new Student(id, name, age, diemCC, diemGK, diemCK));
+                successCount++;
+                
+            } catch (Exception e) {
+                errors.append("Dòng ").append(i + 1).append(": Lỗi định dạng\n");
+                errorCount++;
+            }
+        }
+        
+        ViewTable(txtSearchName.getText());
+        markAsChanged();
+        
+        String message = String.format("Đã thêm: %d sinh viên\nLỗi: %d dòng", 
+            successCount, errorCount);
+        if (errorCount > 0) {
+            message += "\n\nChi tiết lỗi:\n" + errors.toString();
+        }
+        
+        JOptionPane.showMessageDialog(this, message, "Kết quả", 
+            errorCount == 0 ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+    }
+
+    // ========== TÍNH NĂNG CHỌN NGẪU NHIÊN ==========
+    private void pickRandomStudent() {
+        if (list.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Không có sinh viên nào!", 
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        int randomIndex = (int) (Math.random() * list.size());
+        pos = randomIndex;
+        View();
+        
+        Student s = list.get(randomIndex);
+        JOptionPane.showMessageDialog(this, 
+            String.format("🎲 Sinh viên được chọn:\n\n" +
+                         "Mã SV: %s\n" +
+                         "Họ tên: %s\n" +
+                         "Điểm: %.2f (%s)", 
+                         s.getId(), s.getName(), s.getTongDiemAsDouble(), s.getXepLoai()),
+            "Chọn ngẫu nhiên", JOptionPane.INFORMATION_MESSAGE);
+        
+        // Highlight dòng được chọn
+        for (int i = 0; i < tblStudent.getRowCount(); i++) {
+            if (tblStudent.getValueAt(i, 1).equals(s.getId())) {
+                tblStudent.setRowSelectionInterval(i, i);
+                tblStudent.scrollRectToVisible(tblStudent.getCellRect(i, 0, true));
+                break;
+            }
+        }
+    }
+
+    // ========== TÍNH NĂNG SAO CHÉP ==========
+    private void duplicateStudent() {
+        if (list.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Không có sinh viên để sao chép!", 
+                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        Student current = list.get(pos);
+        String newId = JOptionPane.showInputDialog(this, 
+            "Nhập mã SV mới cho bản sao:", 
+            current.getId() + "_copy");
+        
+        if (newId == null || newId.trim().isEmpty()) {
+            return;
+        }
+        
+        if (Search(newId) != null) {
+            JOptionPane.showMessageDialog(this, "Mã SV đã tồn tại!", 
+                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        list.add(new Student(newId, current.getName(), current.getAge(), 
+                           current.getDiemCC(), current.getDiemGK(), current.getDiemCK()));
+        ViewTable(txtSearchName.getText());
+        markAsChanged();
+        updateStatus("Đã sao chép sinh viên");
+    }
+
+    // ========== TÍNH NĂNG LỌC NHANH ==========
+    private void setupQuickFilter() {
+        txtQuickFilter.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                String filterText = txtQuickFilter.getText();
+                ViewTable(filterText);
+            }
+        });
+    }
+
+    // ========== CẬP NHẬT TRẠNG THÁI ==========
+    private void updateStatus(String message) {
+        lblStatus.setText(message);
+        if (!message.isEmpty()) {
+            Timer timer = new Timer(3000, e -> lblStatus.setText(""));
+            timer.setRepeats(false);
+            timer.start();
+        }
     }
 
     private String[] getSortKey(String fullName) {
@@ -187,7 +470,6 @@ public class SF extends javax.swing.JFrame {
         this.txtDiemCK.setEditable(b);
     }
 
-    // Cập nhật thống kê tổng quan
     private void updateStatistics() {
         if (list.isEmpty()) {
             lblTotal.setText("Tổng: 0 sinh viên");
@@ -196,13 +478,20 @@ public class SF extends javax.swing.JFrame {
         }
         
         double sum = 0;
+        double max = Double.MIN_VALUE;
+        double min = Double.MAX_VALUE;
+        
         for (Student s : list) {
-            sum += s.getTongDiemAsDouble();
+            double diem = s.getTongDiemAsDouble();
+            sum += diem;
+            max = Math.max(max, diem);
+            min = Math.min(min, diem);
         }
         double avg = sum / list.size();
         
-        lblTotal.setText(String.format("Tổng: %d sinh viên", list.size()));
-        lblAverage.setText(String.format("Điểm TB lớp: %.2f", avg));
+        lblTotal.setText(String.format("Tổng: %d SV | Cao: %.2f | Thấp: %.2f", 
+            list.size(), max, min));
+        lblAverage.setText(String.format("Điểm TB: %.2f", avg));
     }
 
     public void ViewTable(String name) {
@@ -213,7 +502,8 @@ public class SF extends javax.swing.JFrame {
         String filterType = (String) cbFilter.getSelectedItem();
         
         for (Student x : list) {
-            if (x.getName().toLowerCase().contains(name.toLowerCase())) {
+            if (x.getName().toLowerCase().contains(name.toLowerCase()) ||
+                x.getId().toLowerCase().contains(name.toLowerCase())) {
                 boolean shouldShow = true;
                 
                 if (filterType != null && !filterType.equals("Tất cả")) {
@@ -276,7 +566,6 @@ public class SF extends javax.swing.JFrame {
             }
         }
         
-        // Tô màu xếp loại
         DefaultTableCellRenderer xepLoaiRenderer = new DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
@@ -329,7 +618,6 @@ public class SF extends javax.swing.JFrame {
         return null;
     }
 
-    // Xóa tất cả dữ liệu
     private void clearAllData() {
         if (list.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Danh sách đã trống.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -347,11 +635,11 @@ public class SF extends javax.swing.JFrame {
             pos = -1;
             View();
             ViewTable(txtSearchName.getText());
-            JOptionPane.showMessageDialog(this, "Đã xóa tất cả dữ liệu!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            markAsChanged();
+            updateStatus("Đã xóa tất cả dữ liệu");
         }
     }
 
-    // Hiển thị Top sinh viên
     private void showTopStudents() {
         if (list.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Chưa có sinh viên nào.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
@@ -404,6 +692,8 @@ public class SF extends javax.swing.JFrame {
         txtDiemCK = new javax.swing.JTextField();
         btnClear = new javax.swing.JButton();
         btnTop = new javax.swing.JButton();
+        btnCompare = new javax.swing.JButton();
+        btnDuplicate = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tblStudent = new javax.swing.JTable();
@@ -417,9 +707,15 @@ public class SF extends javax.swing.JFrame {
         cbFilter = new javax.swing.JComboBox<>();
         lblTotal = new javax.swing.JLabel();
         lblAverage = new javax.swing.JLabel();
+        btnBulkAdd = new javax.swing.JButton();
+        btnRandomStudent = new javax.swing.JButton();
+        jLabel11 = new javax.swing.JLabel();
+        txtQuickFilter = new javax.swing.JTextField();
+        chkAutoSave = new javax.swing.JCheckBox();
+        lblStatus = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Quản lý sinh viên");
+        setTitle("Quản lý sinh viên - Phiên bản nâng cao");
 
         jLabel1.setFont(new java.awt.Font("Arial", 1, 28));
         jLabel1.setText("QUẢN LÝ SINH VIÊN");
@@ -463,7 +759,7 @@ public class SF extends javax.swing.JFrame {
         txtDiemCK.setFont(new java.awt.Font("Arial", 0, 14));
 
         btnAdd.setFont(new java.awt.Font("Arial", 0, 14));
-        btnAdd.setText("Thêm");
+        btnAdd.setText("➕ Thêm");
         btnAdd.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnAddActionPerformed(evt);
@@ -471,7 +767,7 @@ public class SF extends javax.swing.JFrame {
         });
 
         btnEdit.setFont(new java.awt.Font("Arial", 0, 14));
-        btnEdit.setText("Sửa");
+        btnEdit.setText("✏️ Sửa");
         btnEdit.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnEditActionPerformed(evt);
@@ -479,7 +775,7 @@ public class SF extends javax.swing.JFrame {
         });
 
         btnDelete.setFont(new java.awt.Font("Arial", 0, 14));
-        btnDelete.setText("Xóa");
+        btnDelete.setText("❌ Xóa");
         btnDelete.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnDeleteActionPerformed(evt);
@@ -487,7 +783,7 @@ public class SF extends javax.swing.JFrame {
         });
 
         btnSave.setFont(new java.awt.Font("Arial", 0, 14));
-        btnSave.setText("Lưu");
+        btnSave.setText("💾 Lưu");
         btnSave.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnSaveActionPerformed(evt);
@@ -495,14 +791,14 @@ public class SF extends javax.swing.JFrame {
         });
 
         btnCancel.setFont(new java.awt.Font("Arial", 0, 14));
-        btnCancel.setText("Hủy");
+        btnCancel.setText("🚫 Hủy");
         btnCancel.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnCancelActionPerformed(evt);
             }
         });
 
-        btnClear.setFont(new java.awt.Font("Arial", 1, 13));
+        btnClear.setFont(new java.awt.Font("Arial", 1, 12));
         btnClear.setText("🗑️ Xóa tất cả");
         btnClear.setForeground(new Color(200, 0, 0));
         btnClear.addActionListener(new java.awt.event.ActionListener() {
@@ -511,12 +807,32 @@ public class SF extends javax.swing.JFrame {
             }
         });
 
-        btnTop.setFont(new java.awt.Font("Arial", 1, 13));
+        btnTop.setFont(new java.awt.Font("Arial", 1, 12));
         btnTop.setText("🏆 Top 5");
         btnTop.setBackground(new Color(255, 215, 0));
         btnTop.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 showTopStudents();
+            }
+        });
+
+       
+
+       
+
+        btnCompare.setFont(new java.awt.Font("Arial", 1, 12));
+        btnCompare.setText("⚖️ So sánh");
+        btnCompare.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                compareStudents();
+            }
+        });
+
+        btnDuplicate.setFont(new java.awt.Font("Arial", 0, 12));
+        btnDuplicate.setText("📋 Sao chép");
+        btnDuplicate.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                duplicateStudent();
             }
         });
 
@@ -529,22 +845,22 @@ public class SF extends javax.swing.JFrame {
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                         .addGroup(jPanel2Layout.createSequentialGroup()
                                                 .addComponent(btnAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(10, 10, 10)
-                                                .addComponent(btnEdit, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(10, 10, 10)
-                                                .addComponent(btnDelete, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addGap(5, 5, 5)
+                                                .addComponent(btnEdit, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(5, 5, 5)
+                                                .addComponent(btnDelete, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE))
                                         .addGroup(jPanel2Layout.createSequentialGroup()
-                                                .addComponent(btnSave, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(10, 10, 10)
-                                                .addComponent(btnCancel, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                .addComponent(btnSave, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(5, 5, 5)
+                                                .addComponent(btnCancel, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE))
                                         .addGroup(jPanel2Layout.createSequentialGroup()
                                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
                                                 .addGap(10, 10, 10)
                                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                                         .addComponent(txtID, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -553,52 +869,67 @@ public class SF extends javax.swing.JFrame {
                                                         .addComponent(txtDiemCC, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                         .addComponent(txtDiemGK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                         .addComponent(txtDiemCK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        .addComponent(btnTop, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnClear, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addGroup(jPanel2Layout.createSequentialGroup()
+                                                
+                                                .addGap(5, 5, 5)
+                                                )
+                                        .addComponent(btnCompare, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnDuplicate, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnTop, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnClear, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addContainerGap(15, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
                 jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                         .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addGap(20, 20, 20)
+                                .addGap(15, 15, 15)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel2)
                                         .addComponent(txtID, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel4)
                                         .addComponent(txtName, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel3)
                                         .addComponent(txtAge, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel7)
                                         .addComponent(txtDiemCC, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel8)
                                         .addComponent(txtDiemGK, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel9)
                                         .addComponent(txtDiemCK, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(30, 30, 30)
+                                .addGap(20, 20, 20)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(btnAdd)
                                         .addComponent(btnEdit)
                                         .addComponent(btnDelete))
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(btnSave)
                                         .addComponent(btnCancel))
-                                .addGap(30, 30, 30)
+                                .addGap(20, 20, 20)
+                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        
+                                .addGap(8, 8, 8)
+                                .addComponent(btnCompare)
+                                .addGap(8, 8, 8)
+                                .addComponent(btnDuplicate)
+                                .addGap(8, 8, 8)
                                 .addComponent(btnTop)
-                                .addGap(10, 10, 10)
+                                .addGap(8, 8, 8)
                                 .addComponent(btnClear)
-                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+                                .addGap(8,8,8))))
+                                
+
+        ;
 
         tblStudent.setFont(new java.awt.Font("Arial", 0, 13));
         tblStudent.setModel(new javax.swing.table.DefaultTableModel(
@@ -634,7 +965,7 @@ public class SF extends javax.swing.JFrame {
         jLabel5.setText("Tìm kiếm:");
         txtSearchName.setFont(new java.awt.Font("Arial", 0, 14));
         btnSearch.setFont(new java.awt.Font("Arial", 0, 14));
-        btnSearch.setText("Tìm");
+        btnSearch.setText("🔍");
         btnSearch.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnSearchActionPerformed(evt);
@@ -643,7 +974,7 @@ public class SF extends javax.swing.JFrame {
 
         jLabel6.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel6.setText("Sắp xếp:");
-        cbSort.setFont(new java.awt.Font("Arial", 0, 14));
+        cbSort.setFont(new java.awt.Font("Arial", 0, 13));
         cbSort.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{
             "Theo Tên", "Theo Tuổi", "Theo ID", "Điểm: Cao → Thấp", "Điểm: Thấp → Cao"
         }));
@@ -653,7 +984,7 @@ public class SF extends javax.swing.JFrame {
             }
         });
 
-        btnStats.setFont(new java.awt.Font("Arial", 1, 14));
+        btnStats.setFont(new java.awt.Font("Arial", 1, 13));
         btnStats.setText("📊 Thống kê");
         btnStats.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -663,7 +994,7 @@ public class SF extends javax.swing.JFrame {
 
         jLabel10.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel10.setText("Lọc:");
-        cbFilter.setFont(new java.awt.Font("Arial", 0, 14));
+        cbFilter.setFont(new java.awt.Font("Arial", 0, 13));
         cbFilter.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{
             "Tất cả", "Xuất sắc (≥9)", "Giỏi (8-8.9)", "Khá (7-7.9)", "Trung bình (5-6.9)", "Yếu (<5)"
         }));
@@ -673,13 +1004,42 @@ public class SF extends javax.swing.JFrame {
             }
         });
 
-        lblTotal.setFont(new java.awt.Font("Arial", 1, 15));
+        lblTotal.setFont(new java.awt.Font("Arial", 1, 14));
         lblTotal.setText("Tổng: 0 sinh viên");
         lblTotal.setForeground(new Color(33, 150, 243));
 
-        lblAverage.setFont(new java.awt.Font("Arial", 1, 15));
+        lblAverage.setFont(new java.awt.Font("Arial", 1, 14));
         lblAverage.setText("Điểm TB: N/A");
         lblAverage.setForeground(new Color(76, 175, 80));
+
+        btnBulkAdd.setFont(new java.awt.Font("Arial", 1, 13));
+        btnBulkAdd.setText("📝 Thêm hàng loạt");
+        btnBulkAdd.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                bulkAddStudents();
+            }
+        });
+
+        btnRandomStudent.setFont(new java.awt.Font("Arial", 1, 13));
+        btnRandomStudent.setText("🎲 Chọn ngẫu nhiên");
+        btnRandomStudent.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pickRandomStudent();
+            }
+        });
+
+        jLabel11.setFont(new java.awt.Font("Arial", 0, 13));
+        jLabel11.setText("Lọc nhanh:");
+        txtQuickFilter.setFont(new java.awt.Font("Arial", 0, 13));
+        txtQuickFilter.setToolTipText("Gõ để lọc theo tên hoặc mã SV");
+
+        chkAutoSave.setFont(new java.awt.Font("Arial", 0, 12));
+        chkAutoSave.setText("Tự động lưu");
+        chkAutoSave.setSelected(true);
+
+        lblStatus.setFont(new java.awt.Font("Arial", 2, 12));
+        lblStatus.setText("");
+        lblStatus.setForeground(new Color(100, 100, 100));
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -691,24 +1051,36 @@ public class SF extends javax.swing.JFrame {
                                         .addGroup(jPanel3Layout.createSequentialGroup()
                                                 .addComponent(jLabel5)
                                                 .addGap(5, 5, 5)
-                                                .addComponent(txtSearchName, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(5, 5, 5)
-                                                .addComponent(btnSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(15, 15, 15)
+                                                .addComponent(txtSearchName, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(3, 3, 3)
+                                                .addComponent(btnSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(10, 10, 10)
                                                 .addComponent(jLabel6)
                                                 .addGap(5, 5, 5)
-                                                .addComponent(cbSort, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                .addGap(15, 15, 15)
+                                                .addComponent(cbSort, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(10, 10, 10)
                                                 .addComponent(jLabel10)
                                                 .addGap(5, 5, 5)
-                                                .addComponent(cbFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(cbFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                                .addComponent(btnStats, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 940, Short.MAX_VALUE)
+                                                .addComponent(btnStats, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 1050, Short.MAX_VALUE)
                                         .addGroup(jPanel3Layout.createSequentialGroup()
-                                                .addComponent(lblTotal, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(lblTotal, javax.swing.GroupLayout.PREFERRED_SIZE, 350, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(10, 10, 10)
+                                                .addComponent(lblAverage, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addComponent(chkAutoSave)
+                                                .addGap(10, 10, 10)
+                                                .addComponent(lblStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addGroup(jPanel3Layout.createSequentialGroup()
+                                                .addComponent(jLabel11)
+                                                .addGap(5, 5, 5)
+                                                .addComponent(txtQuickFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addGap(20, 20, 20)
-                                                .addComponent(lblAverage, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                                .addComponent(btnBulkAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(10, 10, 10)
+                                                .addComponent(btnRandomStudent, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                 .addGap(10, 10, 10))
         );
         jPanel3Layout.setVerticalGroup(
@@ -725,11 +1097,19 @@ public class SF extends javax.swing.JFrame {
                                         .addComponent(cbFilter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                         .addComponent(btnStats))
                                 .addGap(10, 10, 10)
-                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel11)
+                                        .addComponent(txtQuickFilter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnBulkAdd)
+                                        .addComponent(btnRandomStudent))
+                                .addGap(10, 10, 10)
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 520, Short.MAX_VALUE)
                                 .addGap(10, 10, 10)
                                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(lblTotal)
-                                        .addComponent(lblAverage))
+                                        .addComponent(lblAverage)
+                                        .addComponent(chkAutoSave)
+                                        .addComponent(lblStatus))
                                 .addGap(10, 10, 10))
         );
 
@@ -809,6 +1189,8 @@ public class SF extends javax.swing.JFrame {
             }
             View();
             ViewTable(this.txtSearchName.getText());
+            markAsChanged();
+            updateStatus("Đã xóa sinh viên");
         }
     }
 
@@ -851,6 +1233,7 @@ public class SF extends javax.swing.JFrame {
                 }
                 this.list.add(newStudent);
                 pos = list.size() - 1;
+                updateStatus("Đã thêm sinh viên mới");
             } else {
                 Student existingStudentWithNewId = Search(ID);
                 if (existingStudentWithNewId != null && !existingStudentWithNewId.equals(list.get(pos))) {
@@ -858,11 +1241,13 @@ public class SF extends javax.swing.JFrame {
                     return;
                 }
                 this.list.set(pos, newStudent);
+                updateStatus("Đã cập nhật thông tin sinh viên");
             }
 
             View();
             ViewTable(this.txtSearchName.getText());
             OnOff(true, false);
+            markAsChanged();
 
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Tuổi và Điểm phải là các số hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -875,6 +1260,7 @@ public class SF extends javax.swing.JFrame {
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {
         View();
         OnOff(true, false);
+        updateStatus("Đã hủy thao tác");
     }
 
     private void tblStudentMouseClicked(java.awt.event.MouseEvent evt) {
@@ -942,19 +1328,23 @@ public class SF extends javax.swing.JFrame {
         ViewTable(txtSearchName.getText());
         pos = list.isEmpty() ? -1 : 0;
         View();
+        updateStatus("Đã sắp xếp danh sách");
     }
 
     public static void main(String args[]) {
+        // Thiết lập Look and Feel hệ thống
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ex) {
-            java.util.logging.Logger.getLogger(SF.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(SF.class.getName())
+                .log(java.util.logging.Level.SEVERE, null, ex);
         }
 
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new SF().setVisible(true);
-            }
+        // Khởi chạy ứng dụng
+        java.awt.EventQueue.invokeLater(() -> {
+            SF frame = new SF();
+            frame.setVisible(true);
         });
     }
 }
+
