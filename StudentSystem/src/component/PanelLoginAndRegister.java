@@ -30,6 +30,12 @@ public class PanelLoginAndRegister extends javax.swing.JLayeredPane {
         showRegister(true); // mặc định hiện register
     }
 
+    // Hàm validate email
+    private boolean isValidEmail(String email) {
+        String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+        return email != null && email.matches(emailRegex);
+    }
+
     // REGISTER 
     private void initRegister() {
         register.setLayout(new MigLayout("wrap", "push[center]push", "push[]25[]10[]10[]25[]push"));
@@ -87,6 +93,11 @@ public class PanelLoginAndRegister extends javax.swing.JLayeredPane {
             return;
         }
 
+        if (!isValidEmail(email)) {
+            JOptionPane.showMessageDialog(this, "Email không hợp lệ!");
+            return;
+        }
+
         try (Connection conn = Database.getConnection()) {
             String sql = "INSERT INTO users(username, password, email) VALUES(?,?,?)";
             PreparedStatement ps = conn.prepareStatement(sql);
@@ -96,7 +107,6 @@ public class PanelLoginAndRegister extends javax.swing.JLayeredPane {
             int result = ps.executeUpdate();
             if (result > 0) {
                 JOptionPane.showMessageDialog(this, "Đăng ký thành công!");
-                // Clear field
                 txtUser.setText("");
                 txtEmailRegister.setText("");
                 txtPasswordRegister.setText("");
@@ -108,6 +118,7 @@ public class PanelLoginAndRegister extends javax.swing.JLayeredPane {
         }
     }
 
+    // LOGIN
     private void initLogin() {
         login.setLayout(new MigLayout("wrap", "push[center]push", "push[]25[]10[]10[]25[]push"));
         JLabel label = new JLabel("Đăng nhập");
@@ -166,6 +177,11 @@ public class PanelLoginAndRegister extends javax.swing.JLayeredPane {
             return;
         }
 
+        if (!isValidEmail(email)) {
+            JOptionPane.showMessageDialog(this, "Email không hợp lệ!");
+            return;
+        }
+
         try (Connection conn = Database.getConnection()) {
             String sql = "SELECT * FROM users WHERE email=? AND password=?";
             PreparedStatement ps = conn.prepareStatement(sql);
@@ -174,14 +190,9 @@ public class PanelLoginAndRegister extends javax.swing.JLayeredPane {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 JOptionPane.showMessageDialog(this, "Đăng nhập thành công!");
-
-                // Mở SF.java (giả sử SF là JFrame)
                 SF sf = new SF();
                 sf.setVisible(true);
-
-                // Đóng JFrame hiện tại chứa PanelLoginAndRegister
                 SwingUtilities.getWindowAncestor(this).dispose();
-
             } else {
                 JOptionPane.showMessageDialog(this, "Email hoặc mật khẩu không đúng!");
             }

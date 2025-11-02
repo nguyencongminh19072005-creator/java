@@ -15,7 +15,6 @@ import javax.swing.table.DefaultTableModel;
 import java.text.Collator;
 import java.util.Locale;
 
-
 public class SF extends javax.swing.JFrame {
 
     private javax.swing.JComboBox<String> cbSort;
@@ -49,6 +48,12 @@ public class SF extends javax.swing.JFrame {
     private javax.swing.JTextField txtDiemCK;
 
     private javax.swing.JButton btnStats;
+    private javax.swing.JButton btnClear;
+    private javax.swing.JButton btnTop;
+    private javax.swing.JComboBox<String> cbFilter;
+    private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel lblTotal;
+    private javax.swing.JLabel lblAverage;
 
     List<Student> list = new ArrayList<Student>();
     static int pos = 0;
@@ -58,18 +63,16 @@ public class SF extends javax.swing.JFrame {
 
     private final Collator vietnameseCollator;
 
-
     public SF() {
         vietnameseCollator = Collator.getInstance(new Locale("vi", "VN"));
         vietnameseCollator.setStrength(Collator.PRIMARY);
 
         initComponents();
 
-        this.setSize(1200, 700);
+        this.setSize(1350, 750);
         this.setLocationRelativeTo(null);
         this.setResizable(true);
         
-        // Đơn giản hóa màu nền
         this.jPanel1.setBackground(new Color(240, 240, 240));
         this.jPanel2.setBackground(Color.WHITE);
         this.jPanel3.setBackground(Color.WHITE);
@@ -98,6 +101,7 @@ public class SF extends javax.swing.JFrame {
 
         View();
         ViewTable(this.txtSearchName.getText());
+        updateStatistics();
     }
 
     public void loadList() {
@@ -183,45 +187,137 @@ public class SF extends javax.swing.JFrame {
         this.txtDiemCK.setEditable(b);
     }
 
+    // Cập nhật thống kê tổng quan
+    private void updateStatistics() {
+        if (list.isEmpty()) {
+            lblTotal.setText("Tổng: 0 sinh viên");
+            lblAverage.setText("Điểm TB: N/A");
+            return;
+        }
+        
+        double sum = 0;
+        for (Student s : list) {
+            sum += s.getTongDiemAsDouble();
+        }
+        double avg = sum / list.size();
+        
+        lblTotal.setText(String.format("Tổng: %d sinh viên", list.size()));
+        lblAverage.setText(String.format("Điểm TB lớp: %.2f", avg));
+    }
+
     public void ViewTable(String name) {
         DefaultTableModel model = (DefaultTableModel) this.tblStudent.getModel();
         model.setNumRows(0);
         int n = 1;
+        
+        String filterType = (String) cbFilter.getSelectedItem();
+        
         for (Student x : list) {
             if (x.getName().toLowerCase().contains(name.toLowerCase())) {
-                String tongDiemStr = x.getTongDiem();
-                model.addRow(new Object[]{
-                    n++,
-                    x.getId(),
-                    x.getName(),
-                    x.getAge(),
-                    x.getDiemCC(),
-                    x.getDiemGK(),
-                    x.getDiemCK(),
-                    tongDiemStr
-                });
+                boolean shouldShow = true;
+                
+                if (filterType != null && !filterType.equals("Tất cả")) {
+                    String xepLoai = x.getXepLoai();
+                    
+                    switch (filterType) {
+                        case "Xuất sắc (≥9)":
+                            shouldShow = xepLoai.equals("Xuất sắc");
+                            break;
+                        case "Giỏi (8-8.9)":
+                            shouldShow = xepLoai.equals("Giỏi");
+                            break;
+                        case "Khá (7-7.9)":
+                            shouldShow = xepLoai.equals("Khá");
+                            break;
+                        case "Trung bình (5-6.9)":
+                            shouldShow = xepLoai.equals("Trung bình");
+                            break;
+                        case "Yếu (<5)":
+                            shouldShow = xepLoai.equals("Yếu");
+                            break;
+                    }
+                }
+                
+                if (shouldShow) {
+                    String tongDiemStr = x.getTongDiem();
+                    String xepLoai = x.getXepLoai();
+                    model.addRow(new Object[]{
+                        n++,
+                        x.getId(),
+                        x.getName(),
+                        x.getAge(),
+                        x.getDiemCC(),
+                        x.getDiemGK(),
+                        x.getDiemCK(),
+                        tongDiemStr,
+                        xepLoai
+                    });
+                }
             }
         }
+        
         this.tblStudent.setRowHeight(25);
 
         this.tblStudent.getColumnModel().getColumn(0).setPreferredWidth(40);
         this.tblStudent.getColumnModel().getColumn(1).setPreferredWidth(80);
-        this.tblStudent.getColumnModel().getColumn(2).setPreferredWidth(200);
+        this.tblStudent.getColumnModel().getColumn(2).setPreferredWidth(180);
         this.tblStudent.getColumnModel().getColumn(3).setPreferredWidth(50);
-        this.tblStudent.getColumnModel().getColumn(4).setPreferredWidth(70);
-        this.tblStudent.getColumnModel().getColumn(5).setPreferredWidth(70);
-        this.tblStudent.getColumnModel().getColumn(6).setPreferredWidth(70);
+        this.tblStudent.getColumnModel().getColumn(4).setPreferredWidth(60);
+        this.tblStudent.getColumnModel().getColumn(5).setPreferredWidth(60);
+        this.tblStudent.getColumnModel().getColumn(6).setPreferredWidth(60);
         this.tblStudent.getColumnModel().getColumn(7).setPreferredWidth(70);
+        this.tblStudent.getColumnModel().getColumn(8).setPreferredWidth(100);
 
         DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer();
         cellRenderer.setHorizontalAlignment(JLabel.CENTER);
-        tblStudent.getColumnModel().getColumn(0).setCellRenderer(cellRenderer);
-        tblStudent.getColumnModel().getColumn(1).setCellRenderer(cellRenderer);
-        tblStudent.getColumnModel().getColumn(3).setCellRenderer(cellRenderer);
-        tblStudent.getColumnModel().getColumn(4).setCellRenderer(cellRenderer);
-        tblStudent.getColumnModel().getColumn(5).setCellRenderer(cellRenderer);
-        tblStudent.getColumnModel().getColumn(6).setCellRenderer(cellRenderer);
-        tblStudent.getColumnModel().getColumn(7).setCellRenderer(cellRenderer);
+        for (int i = 0; i < 9; i++) {
+            if (i != 2) {
+                tblStudent.getColumnModel().getColumn(i).setCellRenderer(cellRenderer);
+            }
+        }
+        
+        // Tô màu xếp loại
+        DefaultTableCellRenderer xepLoaiRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                java.awt.Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setHorizontalAlignment(JLabel.CENTER);
+                
+                if (!isSelected) {
+                    String xepLoai = (String) value;
+                    switch (xepLoai) {
+                        case "Xuất sắc":
+                            c.setBackground(new Color(76, 175, 80));
+                            c.setForeground(Color.WHITE);
+                            break;
+                        case "Giỏi":
+                            c.setBackground(new Color(139, 195, 74));
+                            c.setForeground(Color.WHITE);
+                            break;
+                        case "Khá":
+                            c.setBackground(new Color(255, 235, 59));
+                            c.setForeground(Color.BLACK);
+                            break;
+                        case "Trung bình":
+                            c.setBackground(new Color(255, 152, 0));
+                            c.setForeground(Color.WHITE);
+                            break;
+                        case "Yếu":
+                            c.setBackground(new Color(244, 67, 54));
+                            c.setForeground(Color.WHITE);
+                            break;
+                        default:
+                            c.setBackground(Color.WHITE);
+                            c.setForeground(Color.BLACK);
+                    }
+                }
+                return c;
+            }
+        };
+        tblStudent.getColumnModel().getColumn(8).setCellRenderer(xepLoaiRenderer);
+        
+        updateStatistics();
     }
 
     public Student Search(String s) {
@@ -231,6 +327,56 @@ public class SF extends javax.swing.JFrame {
             }
         }
         return null;
+    }
+
+    // Xóa tất cả dữ liệu
+    private void clearAllData() {
+        if (list.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Danh sách đã trống.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Bạn có chắc chắn muốn xóa TẤT CẢ sinh viên?\nHành động này không thể hoàn tác!",
+            "Xác nhận xóa tất cả",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE);
+            
+        if (confirm == JOptionPane.YES_OPTION) {
+            list.clear();
+            pos = -1;
+            View();
+            ViewTable(txtSearchName.getText());
+            JOptionPane.showMessageDialog(this, "Đã xóa tất cả dữ liệu!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    // Hiển thị Top sinh viên
+    private void showTopStudents() {
+        if (list.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Chưa có sinh viên nào.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        
+        List<Student> sortedList = new ArrayList<>(list);
+        sortedList.sort((a, b) -> Double.compare(b.getTongDiemAsDouble(), a.getTongDiemAsDouble()));
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("═══════════════════════════════════════\n");
+        sb.append("         TOP 5 SINH VIÊN XUẤT SẮC\n");
+        sb.append("═══════════════════════════════════════\n\n");
+        
+        int count = Math.min(5, sortedList.size());
+        for (int i = 0; i < count; i++) {
+            Student s = sortedList.get(i);
+            sb.append(String.format("🏆 TOP %d\n", i + 1));
+            sb.append(String.format("   Mã SV: %s\n", s.getId()));
+            sb.append(String.format("   Tên: %s\n", s.getName()));
+            sb.append(String.format("   Điểm: %.2f (%s)\n", s.getTongDiemAsDouble(), s.getXepLoai()));
+            sb.append("\n");
+        }
+        
+        JOptionPane.showMessageDialog(this, sb.toString(), "Top sinh viên", JOptionPane.INFORMATION_MESSAGE);
     }
 
     @SuppressWarnings("unchecked")
@@ -256,6 +402,8 @@ public class SF extends javax.swing.JFrame {
         txtDiemGK = new javax.swing.JTextField();
         jLabel9 = new javax.swing.JLabel();
         txtDiemCK = new javax.swing.JTextField();
+        btnClear = new javax.swing.JButton();
+        btnTop = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tblStudent = new javax.swing.JTable();
@@ -265,11 +413,14 @@ public class SF extends javax.swing.JFrame {
         jLabel6 = new javax.swing.JLabel();
         cbSort = new javax.swing.JComboBox<>();
         btnStats = new javax.swing.JButton();
+        jLabel10 = new javax.swing.JLabel();
+        cbFilter = new javax.swing.JComboBox<>();
+        lblTotal = new javax.swing.JLabel();
+        lblAverage = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Quản lý sinh viên");
 
-        // HEADER - đơn giản hơn
         jLabel1.setFont(new java.awt.Font("Arial", 1, 28));
         jLabel1.setText("QUẢN LÝ SINH VIÊN");
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -291,7 +442,6 @@ public class SF extends javax.swing.JFrame {
                                 .addGap(20, 20, 20))
         );
 
-        // PANEL TRÁI - font nhỏ hơn
         txtID.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel2.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel2.setText("Mã SV:");
@@ -352,6 +502,24 @@ public class SF extends javax.swing.JFrame {
             }
         });
 
+        btnClear.setFont(new java.awt.Font("Arial", 1, 13));
+        btnClear.setText("🗑️ Xóa tất cả");
+        btnClear.setForeground(new Color(200, 0, 0));
+        btnClear.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearAllData();
+            }
+        });
+
+        btnTop.setFont(new java.awt.Font("Arial", 1, 13));
+        btnTop.setText("🏆 Top 5");
+        btnTop.setBackground(new Color(255, 215, 0));
+        btnTop.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showTopStudents();
+            }
+        });
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -384,10 +552,11 @@ public class SF extends javax.swing.JFrame {
                                                         .addComponent(txtAge, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                         .addComponent(txtDiemCC, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                         .addComponent(txtDiemGK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                                        .addComponent(txtDiemCK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                                                        .addComponent(txtDiemCK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                        .addComponent(btnTop, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnClear, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addContainerGap(15, Short.MAX_VALUE))
         );
-
         jPanel2Layout.setVerticalGroup(
                 jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                         .addGroup(jPanel2Layout.createSequentialGroup()
@@ -424,19 +593,22 @@ public class SF extends javax.swing.JFrame {
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(btnSave)
                                         .addComponent(btnCancel))
+                                .addGap(30, 30, 30)
+                                .addComponent(btnTop)
+                                .addGap(10, 10, 10)
+                                .addComponent(btnClear)
                                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        // PANEL PHẢI - đơn giản hơn
         tblStudent.setFont(new java.awt.Font("Arial", 0, 13));
         tblStudent.setModel(new javax.swing.table.DefaultTableModel(
                 new Object[][]{},
                 new String[]{
-                    "STT", "Mã SV", "Họ tên", "Tuổi", "CC", "GK", "CK", "Tổng"
+                    "STT", "Mã SV", "Họ tên", "Tuổi", "CC", "GK", "CK", "Tổng", "Xếp loại"
                 }
         ) {
             boolean[] canEdit = new boolean[]{
-                false, false, false, false, false, false, false, false
+                false, false, false, false, false, false, false, false, false
             };
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
@@ -473,7 +645,7 @@ public class SF extends javax.swing.JFrame {
         jLabel6.setText("Sắp xếp:");
         cbSort.setFont(new java.awt.Font("Arial", 0, 14));
         cbSort.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{
-            "Theo Tên", "Theo Tuổi", "Theo ID", "Điểm: Cao -> Thấp", "Điểm: Thấp -> Cao"
+            "Theo Tên", "Theo Tuổi", "Theo ID", "Điểm: Cao → Thấp", "Điểm: Thấp → Cao"
         }));
         cbSort.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -482,12 +654,32 @@ public class SF extends javax.swing.JFrame {
         });
 
         btnStats.setFont(new java.awt.Font("Arial", 1, 14));
-        btnStats.setText("Thống kê");
+        btnStats.setText("📊 Thống kê");
         btnStats.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnStatsActionPerformed(evt);
             }
         });
+
+        jLabel10.setFont(new java.awt.Font("Arial", 0, 14));
+        jLabel10.setText("Lọc:");
+        cbFilter.setFont(new java.awt.Font("Arial", 0, 14));
+        cbFilter.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{
+            "Tất cả", "Xuất sắc (≥9)", "Giỏi (8-8.9)", "Khá (7-7.9)", "Trung bình (5-6.9)", "Yếu (<5)"
+        }));
+        cbFilter.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cbFilterActionPerformed(evt);
+            }
+        });
+
+        lblTotal.setFont(new java.awt.Font("Arial", 1, 15));
+        lblTotal.setText("Tổng: 0 sinh viên");
+        lblTotal.setForeground(new Color(33, 150, 243));
+
+        lblAverage.setFont(new java.awt.Font("Arial", 1, 15));
+        lblAverage.setText("Điểm TB: N/A");
+        lblAverage.setForeground(new Color(76, 175, 80));
 
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
@@ -505,10 +697,18 @@ public class SF extends javax.swing.JFrame {
                                                 .addGap(15, 15, 15)
                                                 .addComponent(jLabel6)
                                                 .addGap(5, 5, 5)
-                                                .addComponent(cbSort, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(cbSort, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(15, 15, 15)
+                                                .addComponent(jLabel10)
+                                                .addGap(5, 5, 5)
+                                                .addComponent(cbFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                                .addComponent(btnStats, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 740, Short.MAX_VALUE))
+                                                .addComponent(btnStats, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 940, Short.MAX_VALUE)
+                                        .addGroup(jPanel3Layout.createSequentialGroup()
+                                                .addComponent(lblTotal, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addGap(20, 20, 20)
+                                                .addComponent(lblAverage, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
                                 .addGap(10, 10, 10))
         );
         jPanel3Layout.setVerticalGroup(
@@ -521,9 +721,15 @@ public class SF extends javax.swing.JFrame {
                                         .addComponent(btnSearch)
                                         .addComponent(jLabel6)
                                         .addComponent(cbSort, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(jLabel10)
+                                        .addComponent(cbFilter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                         .addComponent(btnStats))
                                 .addGap(10, 10, 10)
-                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 450, Short.MAX_VALUE)
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
+                                .addGap(10, 10, 10)
+                                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(lblTotal)
+                                        .addComponent(lblAverage))
                                 .addGap(10, 10, 10))
         );
 
@@ -699,6 +905,10 @@ public class SF extends javax.swing.JFrame {
         ViewTable(this.txtSearchName.getText());
     }
 
+    private void cbFilterActionPerformed(java.awt.event.ActionEvent evt) {
+        ViewTable(this.txtSearchName.getText());
+    }
+
     private void cbSortActionPerformed(java.awt.event.ActionEvent evt) {
         String loai = (String) cbSort.getSelectedItem();
         if (loai == null) {
@@ -720,20 +930,12 @@ public class SF extends javax.swing.JFrame {
                 return vietnameseCollator.compare(n1[2], n2[2]);
             });
         } else if (loai.equals("Theo Tuổi")) {
-            list.sort((a, b) -> {
-                if (a.getAge() > b.getAge()) {
-                    return 1;
-                } else if (a.getAge() < b.getAge()) {
-                    return -1;
-                } else {
-                    return 0;
-                }
-            });
+            list.sort((a, b) -> Integer.compare(a.getAge(), b.getAge()));
         } else if (loai.equals("Theo ID")) {
             list.sort((a, b) -> a.getId().compareTo(b.getId()));
-        } else if (loai.equals("Điểm: Cao -> Thấp")) {
+        } else if (loai.contains("Cao")) {
             list.sort((a, b) -> Double.compare(b.getTongDiemAsDouble(), a.getTongDiemAsDouble()));
-        } else if (loai.equals("Điểm: Thấp -> Cao")) {
+        } else if (loai.contains("Thấp")) {
             list.sort((a, b) -> Double.compare(a.getTongDiemAsDouble(), b.getTongDiemAsDouble()));
         }
 
