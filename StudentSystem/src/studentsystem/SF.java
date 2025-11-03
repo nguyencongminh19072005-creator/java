@@ -19,10 +19,17 @@ import javax.swing.JScrollPane;
 import javax.swing.Timer;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.util.Stack;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class SF extends javax.swing.JFrame {
 
+    // ========================================
+    // KHAI BÁO BIẾN VÀ COMPONENTS
+    // ========================================
     private javax.swing.JComboBox<String> cbSort;
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnCancel;
@@ -30,44 +37,17 @@ public class SF extends javax.swing.JFrame {
     private javax.swing.JButton btnEdit;
     private javax.swing.JButton btnSave;
     private javax.swing.JButton btnSearch;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel3;
+    private javax.swing.JLabel jLabel1, jLabel2, jLabel3, jLabel4, jLabel5, jLabel6;
+    private javax.swing.JLabel jLabel7, jLabel8, jLabel9, jLabel10, jLabel11;
+    private javax.swing.JPanel jPanel1, jPanel2, jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTable tblStudent;
-    private javax.swing.JTextField txtAge;
-    private javax.swing.JTextField txtID;
-    private javax.swing.JTextField txtName;
-    private javax.swing.JTextField txtSearchName;
-
-    private javax.swing.JLabel jLabel7;
-    private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
-    private javax.swing.JTextField txtDiemCC;
-    private javax.swing.JTextField txtDiemGK;
-    private javax.swing.JTextField txtDiemCK;
-
-    private javax.swing.JButton btnStats;
-    private javax.swing.JButton btnClear;
-    private javax.swing.JButton btnTop;
-    
-    
-    private javax.swing.JButton btnCompare;
+    private javax.swing.JTextField txtAge, txtID, txtName, txtSearchName;
+    private javax.swing.JTextField txtDiemCC, txtDiemGK, txtDiemCK;
+    private javax.swing.JButton btnStats, btnClear;
     private javax.swing.JButton btnBulkAdd;
-    private javax.swing.JButton btnRandomStudent;
-    private javax.swing.JButton btnDuplicate;
     private javax.swing.JComboBox<String> cbFilter;
-    private javax.swing.JLabel jLabel10;
-    private javax.swing.JLabel jLabel11;
-    private javax.swing.JLabel lblTotal;
-    private javax.swing.JLabel lblAverage;
-    private javax.swing.JLabel lblStatus;
+    private javax.swing.JLabel lblTotal, lblAverage, lblStatus;
     private javax.swing.JCheckBox chkAutoSave;
     private javax.swing.JTextField txtQuickFilter;
 
@@ -76,33 +56,28 @@ public class SF extends javax.swing.JFrame {
     Student x;
     static int check = 0;
     JPanel panel;
-
     private final Collator vietnameseCollator;
-    
-    
-    // Tính năng tự động lưu
     private Timer autoSaveTimer;
     private boolean hasUnsavedChanges = false;
-    
-    // Tính năng so sánh sinh viên
     private Student comparisonStudent = null;
 
+    // ========================================
+    // CONSTRUCTOR
+    // ========================================
     public SF() {
         vietnameseCollator = Collator.getInstance(new Locale("vi", "VN"));
         vietnameseCollator.setStrength(Collator.PRIMARY);
 
         initComponents();
-
         this.setSize(1400, 800);
         this.setLocationRelativeTo(null);
         this.setResizable(true);
-        
+
         this.jPanel1.setBackground(new Color(240, 240, 240));
         this.jPanel2.setBackground(Color.WHITE);
         this.jPanel3.setBackground(Color.WHITE);
 
         loadList();
-        
 
         if (!list.isEmpty()) {
             list.sort(new Comparator<Student>() {
@@ -110,7 +85,6 @@ public class SF extends javax.swing.JFrame {
                 public int compare(Student s1, Student s2) {
                     String[] key1 = getSortKey(s1.getName());
                     String[] key2 = getSortKey(s2.getName());
-
                     int result = vietnameseCollator.compare(key1[0], key2[0]);
                     if (result != 0) {
                         return result;
@@ -127,35 +101,76 @@ public class SF extends javax.swing.JFrame {
         View();
         ViewTable(this.txtSearchName.getText());
         updateStatistics();
-        
-        // Khởi tạo timer tự động lưu (mỗi 30 giây)
+
         autoSaveTimer = new Timer(30000, e -> {
             if (chkAutoSave.isSelected() && hasUnsavedChanges) {
                 autoSave();
             }
         });
         autoSaveTimer.start();
-        
-        // Thêm listener cho tìm kiếm nhanh
+
         setupQuickFilter();
     }
-
-    public void loadList() {
-        list = new ArrayList<>();
-        list.add(new Student("1111", "Nguyễn Văn Sơn", 23, 10, 8, 7.5));
-        list.add(new Student("2222", "Trần Thị Mai", 20, 9, 9, 9));
-        list.add(new Student("3333", "Lê Thảo Mai", 21, 8.5, 7, 8));
-        list.add(new Student("4444", "Nguyễn Thị Ánh", 22, 10, 10, 10));
-        list.add(new Student("5555", "Phạm Minh Tuấn", 24, 7, 6, 7));
-        list.add(new Student("6666", "Hoàng Thị Lan", 19, 8, 8.5, 9));
+    private void SaveFile() {
+    try {
+        FileWriter fw = new FileWriter("students.txt");
+        for (Student s : list) {
+            fw.write(s.getId() + "," + s.getName() + "," + s.getAge() + ","
+                    + s.getDiemCC() + "," + s.getDiemGK() + "," + s.getDiemCK() + "\n");
+        }
+        fw.close();
+        System.out.println("Đã lưu vào file students.txt");
+    } catch (IOException e) {
+        e.printStackTrace();
     }
+}
 
-   
-    // ========== TÍNH NĂNG TỰ ĐỘNG LƯU ==========
+    // ========================================
+    // [TÍNH NĂNG 1] LOAD DỮ LIỆU MẪU
+    public void loadList() {
+    list = new ArrayList<>();
+    try {
+        File file = new File("students.txt");
+        if (!file.exists()) {
+            // Nếu chưa có file, tạo 1 vài dữ liệu mẫu như ban đầu
+            list.add(new Student("1111", "Nguyễn Văn Sơn", 23, 10, 8, 7.5));
+            list.add(new Student("2222", "Trần Thị Mai", 20, 9, 9, 9));
+            list.add(new Student("3333", "Lê Thảo Mai", 21, 8.5, 7, 8));
+            list.add(new Student("4444", "Nguyễn Thị Ánh", 22, 10, 10, 10));
+            list.add(new Student("5555", "Phạm Minh Tuấn", 24, 7, 6, 7));
+            list.add(new Student("6666", "Hoàng Thị Lan", 19, 8, 8.5, 9));
+            SaveFile(); // Lưu lại để tạo file lần đầu
+            return;
+        }
+
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        String line;
+        while ((line = br.readLine()) != null) {
+            String[] parts = line.split(",");
+            if (parts.length == 6) {
+                String id = parts[0].trim();
+                String name = parts[1].trim();
+                int age = Integer.parseInt(parts[2].trim());
+                double cc = Double.parseDouble(parts[3].trim());
+                double gk = Double.parseDouble(parts[4].trim());
+                double ck = Double.parseDouble(parts[5].trim());
+                list.add(new Student(id, name, age, cc, gk, ck));
+            }
+        }
+        br.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+
+
+    // ========================================
+    // [TÍNH NĂNG 2] TỰ ĐỘNG LƯU
+    // ========================================
     private void autoSave() {
+        SaveFile();
         updateStatus("Đã tự động lưu...");
         hasUnsavedChanges = false;
-        
         Timer statusTimer = new Timer(2000, e -> updateStatus(""));
         statusTimer.setRepeats(false);
         statusTimer.start();
@@ -165,98 +180,43 @@ public class SF extends javax.swing.JFrame {
         hasUnsavedChanges = true;
     }
 
-    // ========== TÍNH NĂNG SO SÁNH SINH VIÊN ==========
-    private void compareStudents() {
-        if (list.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Không có sinh viên để so sánh!", 
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        
-        if (comparisonStudent == null) {
-            comparisonStudent = list.get(pos);
-            updateStatus("Đã chọn " + comparisonStudent.getName() + " để so sánh. Chọn sinh viên thứ 2.");
-            btnCompare.setText("❌ Hủy so sánh");
-        } else {
-            Student currentStudent = list.get(pos);
-            if (comparisonStudent.equals(currentStudent)) {
-                JOptionPane.showMessageDialog(this, "Không thể so sánh cùng một sinh viên!", 
-                    "Thông báo", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            
-            showComparisonDialog(comparisonStudent, currentStudent);
-            comparisonStudent = null;
-            btnCompare.setText("⚖️ So sánh");
-            updateStatus("");
-        }
-    }
-
-    private void showComparisonDialog(Student s1, Student s2) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("══════════════════════════════════════════════════\n");
-        sb.append("           SO SÁNH HAI SINH VIÊN\n");
-        sb.append("══════════════════════════════════════════════════\n\n");
-        
-        sb.append(String.format("%-25s | %-25s\n", s1.getName(), s2.getName()));
-        sb.append(String.format("%-25s | %-25s\n", "Mã: " + s1.getId(), "Mã: " + s2.getId()));
-        sb.append(String.format("%-25s | %-25s\n", "Tuổi: " + s1.getAge(), "Tuổi: " + s2.getAge()));
-        sb.append("──────────────────────────────────────────────────\n");
-        sb.append(String.format("%-25s | %-25s\n", 
-            "Điểm CC: " + s1.getDiemCC(), "Điểm CC: " + s2.getDiemCC()));
-        sb.append(String.format("%-25s | %-25s\n", 
-            "Điểm GK: " + s1.getDiemGK(), "Điểm GK: " + s2.getDiemGK()));
-        sb.append(String.format("%-25s | %-25s\n", 
-            "Điểm CK: " + s1.getDiemCK(), "Điểm CK: " + s2.getDiemCK()));
-        sb.append("──────────────────────────────────────────────────\n");
-        sb.append(String.format("%-25s | %-25s\n", 
-            "Tổng điểm: " + s1.getTongDiem(), "Tổng điểm: " + s2.getTongDiem()));
-        sb.append(String.format("%-25s | %-25s\n", 
-            "Xếp loại: " + s1.getXepLoai(), "Xếp loại: " + s2.getXepLoai()));
-        sb.append("\n");
-        
-        double diff = s1.getTongDiemAsDouble() - s2.getTongDiemAsDouble();
-        if (diff > 0) {
-            sb.append(String.format("%s cao hơn %.2f điểm", s1.getName(), diff));
-        } else if (diff < 0) {
-            sb.append(String.format("%s cao hơn %.2f điểm", s2.getName(), -diff));
-        } else {
-            sb.append("Hai sinh viên có điểm bằng nhau");
-        }
-        
-        JTextArea textArea = new JTextArea(sb.toString());
-        textArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
-        textArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(textArea);
-        scrollPane.setPreferredSize(new java.awt.Dimension(550, 350));
-        
-        JOptionPane.showMessageDialog(this, scrollPane, "So sánh sinh viên", 
-            JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    // ========== TÍNH NĂNG THÊM HÀNG LOẠT ==========
+    // ========================================
+    // [TÍNH NĂNG 4] THÊM HÀNG LOẠT
+    // ========================================
     private void bulkAddStudents() {
-        String input = JOptionPane.showInputDialog(this, 
-            "Nhập thông tin sinh viên (mỗi dòng 1 sinh viên):\n" +
-            "Định dạng: Mã SV, Họ tên, Tuổi, Điểm CC, Điểm GK, Điểm CK\n" +
-            "Ví dụ: 7777, Nguyễn Văn A, 20, 8, 8.5, 9\n\n" +
-            "Nhập nhiều sinh viên (mỗi dòng một sinh viên):", 
-            "Thêm hàng loạt", JOptionPane.PLAIN_MESSAGE);
-        
-        if (input == null || input.trim().isEmpty()) {
+        JTextArea textArea = new JTextArea(10, 40); // 10 dòng, 40 cột
+        JScrollPane scrollPane = new JScrollPane(textArea);
+
+        int result = JOptionPane.showConfirmDialog(
+                this,
+                scrollPane,
+                "Nhập thông tin sinh viên (mỗi dòng 1 sinh viên):\n"
+                + "Định dạng: Mã SV, Họ tên, Tuổi, Điểm CC, Điểm GK, Điểm CK\n"
+                + "Ví dụ: 7777, Nguyễn Văn A, 20, 8, 8.5, 9",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE
+        );
+
+        if (result != JOptionPane.OK_OPTION) {
             return;
         }
-        
+
+        String input = textArea.getText().trim();
+        if (input.isEmpty()) {
+            return;
+        }
+
         String[] lines = input.split("\n");
         int successCount = 0;
         int errorCount = 0;
         StringBuilder errors = new StringBuilder();
-        
-        
+
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].trim();
-            if (line.isEmpty()) continue;
-            
+            if (line.isEmpty()) {
+                continue;
+            }
+
             try {
                 String[] parts = line.split(",");
                 if (parts.length != 6) {
@@ -264,77 +224,76 @@ public class SF extends javax.swing.JFrame {
                     errorCount++;
                     continue;
                 }
-                
+
                 String id = parts[0].trim();
                 String name = parts[1].trim();
                 int age = Integer.parseInt(parts[2].trim());
                 double diemCC = Double.parseDouble(parts[3].trim());
                 double diemGK = Double.parseDouble(parts[4].trim());
                 double diemCK = Double.parseDouble(parts[5].trim());
-                
+
                 if (Search(id) != null) {
                     errors.append("Dòng ").append(i + 1).append(": Mã SV đã tồn tại\n");
                     errorCount++;
                     continue;
                 }
-                
+
                 if (age < 18 || age > 100) {
                     errors.append("Dòng ").append(i + 1).append(": Tuổi không hợp lệ\n");
                     errorCount++;
                     continue;
                 }
-                
-                if (diemCC < 0 || diemCC > 10 || diemGK < 0 || diemGK > 10 || 
-                    diemCK < 0 || diemCK > 10) {
+
+                if (diemCC < 0 || diemCC > 10 || diemGK < 0 || diemGK > 10 || diemCK < 0 || diemCK > 10) {
                     errors.append("Dòng ").append(i + 1).append(": Điểm không hợp lệ\n");
                     errorCount++;
                     continue;
                 }
-                
+
                 list.add(new Student(id, name, age, diemCC, diemGK, diemCK));
                 successCount++;
-                
+
             } catch (Exception e) {
                 errors.append("Dòng ").append(i + 1).append(": Lỗi định dạng\n");
                 errorCount++;
             }
         }
-        
+
         ViewTable(txtSearchName.getText());
         markAsChanged();
-        
-        String message = String.format("Đã thêm: %d sinh viên\nLỗi: %d dòng", 
-            successCount, errorCount);
+        SaveFile();
+        String message = String.format("Đã thêm: %d sinh viên\nLỗi: %d dòng", successCount, errorCount);
         if (errorCount > 0) {
             message += "\n\nChi tiết lỗi:\n" + errors.toString();
         }
-        
-        JOptionPane.showMessageDialog(this, message, "Kết quả", 
-            errorCount == 0 ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+
+        JOptionPane.showMessageDialog(this, message, "Kết quả",
+                errorCount == 0 ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
     }
 
-    // ========== TÍNH NĂNG CHỌN NGẪU NHIÊN ==========
+    // ========================================
+    // [TÍNH NĂNG 5] CHỌN NGẪU NHIÊN
+    // ========================================
     private void pickRandomStudent() {
         if (list.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Không có sinh viên nào!", 
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Không có sinh viên nào!",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        
+
         int randomIndex = (int) (Math.random() * list.size());
         pos = randomIndex;
         View();
-        
+
         Student s = list.get(randomIndex);
-        JOptionPane.showMessageDialog(this, 
-            String.format("🎲 Sinh viên được chọn:\n\n" +
-                         "Mã SV: %s\n" +
-                         "Họ tên: %s\n" +
-                         "Điểm: %.2f (%s)", 
-                         s.getId(), s.getName(), s.getTongDiemAsDouble(), s.getXepLoai()),
-            "Chọn ngẫu nhiên", JOptionPane.INFORMATION_MESSAGE);
-        
-        // Highlight dòng được chọn
+        JOptionPane.showMessageDialog(this,
+                String.format("🎲 Sinh viên được chọn:\n\n"
+                        + "Mã SV: %s\n"
+                        + "Họ tên: %s\n"
+                        + "Điểm: %.2f (%s)",
+                        s.getId(), s.getName(), s.getTongDiemAsDouble(), s.getXepLoai()),
+                "Chọn ngẫu nhiên", JOptionPane.INFORMATION_MESSAGE);
+
         for (int i = 0; i < tblStudent.getRowCount(); i++) {
             if (tblStudent.getValueAt(i, 1).equals(s.getId())) {
                 tblStudent.setRowSelectionInterval(i, i);
@@ -344,48 +303,85 @@ public class SF extends javax.swing.JFrame {
         }
     }
 
-    // ========== TÍNH NĂNG SAO CHÉP ==========
+    // ========================================
+    // [TÍNH NĂNG 6] SAO CHÉP SINH VIÊN
+    // ========================================
     private void duplicateStudent() {
         if (list.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Không có sinh viên để sao chép!", 
-                "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Không có sinh viên để sao chép!",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        
+
         Student current = list.get(pos);
-        String newId = JOptionPane.showInputDialog(this, 
-            "Nhập mã SV mới cho bản sao:", 
-            current.getId() + "_copy");
-        
+        String newId = JOptionPane.showInputDialog(this,
+                "Nhập mã SV mới cho bản sao:", current.getId() + "_copy");
+
         if (newId == null || newId.trim().isEmpty()) {
             return;
         }
-        
+
         if (Search(newId) != null) {
-            JOptionPane.showMessageDialog(this, "Mã SV đã tồn tại!", 
-                "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Mã SV đã tồn tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        
-        list.add(new Student(newId, current.getName(), current.getAge(), 
-                           current.getDiemCC(), current.getDiemGK(), current.getDiemCK()));
+
+        list.add(new Student(newId, current.getName(), current.getAge(),
+                current.getDiemCC(), current.getDiemGK(), current.getDiemCK()));
         ViewTable(txtSearchName.getText());
         markAsChanged();
+        SaveFile();
         updateStatus("Đã sao chép sinh viên");
     }
 
-    // ========== TÍNH NĂNG LỌC NHANH ==========
+    // ========================================
+    // [TÍNH NĂNG 7] LỌC NHANH
+    // ========================================
     private void setupQuickFilter() {
-        txtQuickFilter.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                String filterText = txtQuickFilter.getText();
-                ViewTable(filterText);
+    txtQuickFilter.addKeyListener(new KeyAdapter() {
+        @Override
+        public void keyReleased(KeyEvent e) {
+            String text = txtQuickFilter.getText().trim();
+            if(text.isEmpty()) {
+                ViewTable(""); // Hiển thị tất cả nếu ô trống
+                return;
             }
-        });
-    }
 
-    // ========== CẬP NHẬT TRẠNG THÁI ==========
+            try {
+                double diemCanLoc = Double.parseDouble(text);
+                ViewTableByDiem(diemCanLoc);
+            } catch (NumberFormatException ex) {
+                ViewTable(""); // Nếu không phải số → hiển thị tất cả
+            }
+        }
+    });
+}
+
+private void ViewTableByDiem(double diem) {
+    DefaultTableModel model = (DefaultTableModel) tblStudent.getModel();
+    model.setRowCount(0); // Xóa bảng cũ
+
+    for(Student s : list) { // list sinh viên
+        if(s.getTongDiemAsDouble() == diem) { // lọc theo tổng điểm
+            model.addRow(new Object[] {
+                s.getId(),
+                s.getName(),
+                s.getAge(),
+                s.getDiemCC(),
+                s.getDiemGK(),
+                s.getDiemCK(),
+                s.getTongDiem(),
+                s.getXepLoai()
+            });
+        }
+    }
+}
+
+
+
+    // ========================================
+    // [TÍNH NĂNG 8] CẬP NHẬT TRẠNG THÁI
+    // ========================================
     private void updateStatus(String message) {
         lblStatus.setText(message);
         if (!message.isEmpty()) {
@@ -395,6 +391,9 @@ public class SF extends javax.swing.JFrame {
         }
     }
 
+    // ========================================
+    // [TÍNH NĂNG 9] SẮP XẾP TIẾNG VIỆT
+    // ========================================
     private String[] getSortKey(String fullName) {
         if (fullName == null || fullName.trim().isEmpty()) {
             return new String[]{"", "", ""};
@@ -418,6 +417,9 @@ public class SF extends javax.swing.JFrame {
         return new String[]{firstName, lastName, middleName};
     }
 
+    // ========================================
+    // [TÍNH NĂNG 10] HIỂN THỊ CHI TIẾT
+    // ========================================
     public void View() {
         if (list.isEmpty()) {
             this.txtID.setText("");
@@ -461,7 +463,6 @@ public class SF extends javax.swing.JFrame {
         this.btnAdd.setVisible(a);
         this.btnEdit.setVisible(a);
         this.btnDelete.setVisible(a);
-
         this.txtID.setEditable(b);
         this.txtName.setEditable(b);
         this.txtAge.setEditable(b);
@@ -470,17 +471,20 @@ public class SF extends javax.swing.JFrame {
         this.txtDiemCK.setEditable(b);
     }
 
+    // ========================================
+    // [TÍNH NĂNG 11] THỐNG KÊ TỰ ĐỘNG
+    // ========================================
     private void updateStatistics() {
         if (list.isEmpty()) {
             lblTotal.setText("Tổng: 0 sinh viên");
             lblAverage.setText("Điểm TB: N/A");
             return;
         }
-        
+
         double sum = 0;
         double max = Double.MIN_VALUE;
         double min = Double.MAX_VALUE;
-        
+
         for (Student s : list) {
             double diem = s.getTongDiemAsDouble();
             sum += diem;
@@ -488,27 +492,28 @@ public class SF extends javax.swing.JFrame {
             min = Math.min(min, diem);
         }
         double avg = sum / list.size();
-        
-        lblTotal.setText(String.format("Tổng: %d SV | Cao: %.2f | Thấp: %.2f", 
-            list.size(), max, min));
+
+        lblTotal.setText(String.format("Tổng: %d SV | Cao: %.2f | Thấp: %.2f", list.size(), max, min));
         lblAverage.setText(String.format("Điểm TB: %.2f", avg));
     }
 
+    // ========================================
+    // TÌm kiếm và hiển thị bảng và lọc
+    // ========================================
     public void ViewTable(String name) {
         DefaultTableModel model = (DefaultTableModel) this.tblStudent.getModel();
         model.setNumRows(0);
         int n = 1;
-        
+
         String filterType = (String) cbFilter.getSelectedItem();
-        
+
         for (Student x : list) {
-            if (x.getName().toLowerCase().contains(name.toLowerCase()) ||
-                x.getId().toLowerCase().contains(name.toLowerCase())) {
+            if (x.getName().toLowerCase().contains(name.toLowerCase())
+                    || x.getId().toLowerCase().contains(name.toLowerCase())) {
                 boolean shouldShow = true;
-                
+
                 if (filterType != null && !filterType.equals("Tất cả")) {
                     String xepLoai = x.getXepLoai();
-                    
                     switch (filterType) {
                         case "Xuất sắc (≥9)":
                             shouldShow = xepLoai.equals("Xuất sắc");
@@ -527,27 +532,17 @@ public class SF extends javax.swing.JFrame {
                             break;
                     }
                 }
-                
+
                 if (shouldShow) {
                     String tongDiemStr = x.getTongDiem();
                     String xepLoai = x.getXepLoai();
-                    model.addRow(new Object[]{
-                        n++,
-                        x.getId(),
-                        x.getName(),
-                        x.getAge(),
-                        x.getDiemCC(),
-                        x.getDiemGK(),
-                        x.getDiemCK(),
-                        tongDiemStr,
-                        xepLoai
-                    });
+                    model.addRow(new Object[]{n++, x.getId(), x.getName(), x.getAge(),
+                        x.getDiemCC(), x.getDiemGK(), x.getDiemCK(), tongDiemStr, xepLoai});
                 }
             }
         }
-        
+        // set độ rộng cột
         this.tblStudent.setRowHeight(25);
-
         this.tblStudent.getColumnModel().getColumn(0).setPreferredWidth(40);
         this.tblStudent.getColumnModel().getColumn(1).setPreferredWidth(80);
         this.tblStudent.getColumnModel().getColumn(2).setPreferredWidth(180);
@@ -565,14 +560,14 @@ public class SF extends javax.swing.JFrame {
                 tblStudent.getColumnModel().getColumn(i).setCellRenderer(cellRenderer);
             }
         }
-        
+
         DefaultTableCellRenderer xepLoaiRenderer = new DefaultTableCellRenderer() {
             @Override
             public java.awt.Component getTableCellRendererComponent(javax.swing.JTable table, Object value,
                     boolean isSelected, boolean hasFocus, int row, int column) {
                 java.awt.Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 setHorizontalAlignment(JLabel.CENTER);
-                
+
                 if (!isSelected) {
                     String xepLoai = (String) value;
                     switch (xepLoai) {
@@ -605,10 +600,13 @@ public class SF extends javax.swing.JFrame {
             }
         };
         tblStudent.getColumnModel().getColumn(8).setCellRenderer(xepLoaiRenderer);
-        
+
         updateStatistics();
     }
 
+    // ========================================
+    // [TÍNH NĂNG 13] TÌM KIẾM THEO ID
+    // ========================================
     public Student Search(String s) {
         for (Student x : list) {
             if (x.getId().equals(s)) {
@@ -618,18 +616,19 @@ public class SF extends javax.swing.JFrame {
         return null;
     }
 
+    // ========================================
+    // [TÍNH NĂNG 14] XÓA TẤT CẢ
+    // ========================================
     private void clearAllData() {
         if (list.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Danh sách đã trống.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        
+
         int confirm = JOptionPane.showConfirmDialog(this,
-            "Bạn có chắc chắn muốn xóa TẤT CẢ sinh viên?\nHành động này không thể hoàn tác!",
-            "Xác nhận xóa tất cả",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE);
-            
+                "Bạn có chắc chắn muốn xóa TẤT CẢ sinh viên?\nHành động này không thể hoàn tác!",
+                "Xác nhận xóa tất cả", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
         if (confirm == JOptionPane.YES_OPTION) {
             list.clear();
             pos = -1;
@@ -640,20 +639,23 @@ public class SF extends javax.swing.JFrame {
         }
     }
 
+    // ========================================
+    // [TÍNH NĂNG 15] TOP 5 SINH VIÊN
+    // ========================================
     private void showTopStudents() {
         if (list.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Chưa có sinh viên nào.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        
+
         List<Student> sortedList = new ArrayList<>(list);
         sortedList.sort((a, b) -> Double.compare(b.getTongDiemAsDouble(), a.getTongDiemAsDouble()));
-        
+
         StringBuilder sb = new StringBuilder();
         sb.append("═══════════════════════════════════════\n");
         sb.append("         TOP 5 SINH VIÊN XUẤT SẮC\n");
         sb.append("═══════════════════════════════════════\n\n");
-        
+
         int count = Math.min(5, sortedList.size());
         for (int i = 0; i < count; i++) {
             Student s = sortedList.get(i);
@@ -663,13 +665,15 @@ public class SF extends javax.swing.JFrame {
             sb.append(String.format("   Điểm: %.2f (%s)\n", s.getTongDiemAsDouble(), s.getXepLoai()));
             sb.append("\n");
         }
-        
+
         JOptionPane.showMessageDialog(this, sb.toString(), "Top sinh viên", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    // ========================================
+    // KHỞI TẠO GIAO DIỆN
+    // ========================================
     @SuppressWarnings("unchecked")
     private void initComponents() {
-
         jPanel1 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jPanel2 = new javax.swing.JPanel();
@@ -691,9 +695,6 @@ public class SF extends javax.swing.JFrame {
         jLabel9 = new javax.swing.JLabel();
         txtDiemCK = new javax.swing.JTextField();
         btnClear = new javax.swing.JButton();
-        btnTop = new javax.swing.JButton();
-        btnCompare = new javax.swing.JButton();
-        btnDuplicate = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
         tblStudent = new javax.swing.JTable();
@@ -708,14 +709,13 @@ public class SF extends javax.swing.JFrame {
         lblTotal = new javax.swing.JLabel();
         lblAverage = new javax.swing.JLabel();
         btnBulkAdd = new javax.swing.JButton();
-        btnRandomStudent = new javax.swing.JButton();
         jLabel11 = new javax.swing.JLabel();
         txtQuickFilter = new javax.swing.JTextField();
         chkAutoSave = new javax.swing.JCheckBox();
         lblStatus = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Quản lý sinh viên - Phiên bản nâng cao");
+        setTitle("Quản lý sinh viên");
 
         jLabel1.setFont(new java.awt.Font("Arial", 1, 28));
         jLabel1.setText("QUẢN LÝ SINH VIÊN");
@@ -747,7 +747,6 @@ public class SF extends javax.swing.JFrame {
         txtName.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel4.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel4.setText("Họ tên:");
-
         jLabel7.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel7.setText("Điểm CC:");
         txtDiemCC.setFont(new java.awt.Font("Arial", 0, 14));
@@ -759,82 +758,30 @@ public class SF extends javax.swing.JFrame {
         txtDiemCK.setFont(new java.awt.Font("Arial", 0, 14));
 
         btnAdd.setFont(new java.awt.Font("Arial", 0, 14));
-        btnAdd.setText("➕ Thêm");
-        btnAdd.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnAddActionPerformed(evt);
-            }
-        });
+        btnAdd.setText("Thêm");
+        btnAdd.addActionListener(evt -> btnAddActionPerformed(evt));
 
         btnEdit.setFont(new java.awt.Font("Arial", 0, 14));
-        btnEdit.setText("✏️ Sửa");
-        btnEdit.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnEditActionPerformed(evt);
-            }
-        });
+        btnEdit.setText("Sửa");
+        btnEdit.addActionListener(evt -> btnEditActionPerformed(evt));
 
         btnDelete.setFont(new java.awt.Font("Arial", 0, 14));
-        btnDelete.setText("❌ Xóa");
-        btnDelete.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnDeleteActionPerformed(evt);
-            }
-        });
+        btnDelete.setText("Xóa");
+        btnDelete.addActionListener(evt -> btnDeleteActionPerformed(evt));
 
         btnSave.setFont(new java.awt.Font("Arial", 0, 14));
-        btnSave.setText("💾 Lưu");
-        btnSave.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnSaveActionPerformed(evt);
-            }
-        });
+        btnSave.setText("Lưu");
+        btnSave.addActionListener(evt -> btnSaveActionPerformed(evt));
 
         btnCancel.setFont(new java.awt.Font("Arial", 0, 14));
-        btnCancel.setText("🚫 Hủy");
-        btnCancel.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnCancelActionPerformed(evt);
-            }
-        });
+        btnCancel.setText("Hủy");
+        btnCancel.addActionListener(evt -> btnCancelActionPerformed(evt));
 
         btnClear.setFont(new java.awt.Font("Arial", 1, 12));
-        btnClear.setText("🗑️ Xóa tất cả");
+        btnClear.setText("Xóa tất cả");
         btnClear.setForeground(new Color(200, 0, 0));
-        btnClear.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                clearAllData();
-            }
-        });
+        btnClear.addActionListener(evt -> clearAllData());
 
-        btnTop.setFont(new java.awt.Font("Arial", 1, 12));
-        btnTop.setText("🏆 Top 5");
-        btnTop.setBackground(new Color(255, 215, 0));
-        btnTop.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                showTopStudents();
-            }
-        });
-
-       
-
-       
-
-        btnCompare.setFont(new java.awt.Font("Arial", 1, 12));
-        btnCompare.setText("⚖️ So sánh");
-        btnCompare.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                compareStudents();
-            }
-        });
-
-        btnDuplicate.setFont(new java.awt.Font("Arial", 0, 12));
-        btnDuplicate.setText("📋 Sao chép");
-        btnDuplicate.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                duplicateStudent();
-            }
-        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -869,13 +816,8 @@ public class SF extends javax.swing.JFrame {
                                                         .addComponent(txtDiemCC, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                         .addComponent(txtDiemGK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                         .addComponent(txtDiemCK, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                                
-                                                .addGap(5, 5, 5)
-                                                )
-                                        .addComponent(btnCompare, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnDuplicate, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnTop, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        
+                                       
                                         .addComponent(btnClear, javax.swing.GroupLayout.PREFERRED_SIZE, 145, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addContainerGap(15, Short.MAX_VALUE))
         );
@@ -916,31 +858,19 @@ public class SF extends javax.swing.JFrame {
                                         .addComponent(btnSave)
                                         .addComponent(btnCancel))
                                 .addGap(20, 20, 20)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        
-                                .addGap(8, 8, 8)
-                                .addComponent(btnCompare)
-                                .addGap(8, 8, 8)
-                                .addComponent(btnDuplicate)
-                                .addGap(8, 8, 8)
-                                .addComponent(btnTop)
-                                .addGap(8, 8, 8)
-                                .addComponent(btnClear)
-                                .addGap(8,8,8))))
                                 
-
-        ;
+                                
+                                
+                                .addComponent(btnClear)
+                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
 
         tblStudent.setFont(new java.awt.Font("Arial", 0, 13));
         tblStudent.setModel(new javax.swing.table.DefaultTableModel(
                 new Object[][]{},
-                new String[]{
-                    "STT", "Mã SV", "Họ tên", "Tuổi", "CC", "GK", "CK", "Tổng", "Xếp loại"
-                }
+                new String[]{"STT", "Mã SV", "Họ tên", "Tuổi", "CC", "GK", "CK", "Tổng", "Xếp loại"}
         ) {
-            boolean[] canEdit = new boolean[]{
-                false, false, false, false, false, false, false, false, false
-            };
+            boolean[] canEdit = new boolean[]{false, false, false, false, false, false, false, false, false};
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
                 return canEdit[columnIndex];
@@ -966,11 +896,7 @@ public class SF extends javax.swing.JFrame {
         txtSearchName.setFont(new java.awt.Font("Arial", 0, 14));
         btnSearch.setFont(new java.awt.Font("Arial", 0, 14));
         btnSearch.setText("🔍");
-        btnSearch.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnSearchActionPerformed(evt);
-            }
-        });
+        btnSearch.addActionListener(evt -> btnSearchActionPerformed(evt));
 
         jLabel6.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel6.setText("Sắp xếp:");
@@ -978,19 +904,11 @@ public class SF extends javax.swing.JFrame {
         cbSort.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{
             "Theo Tên", "Theo Tuổi", "Theo ID", "Điểm: Cao → Thấp", "Điểm: Thấp → Cao"
         }));
-        cbSort.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cbSortActionPerformed(evt);
-            }
-        });
+        cbSort.addActionListener(evt -> cbSortActionPerformed(evt));
 
         btnStats.setFont(new java.awt.Font("Arial", 1, 13));
-        btnStats.setText("📊 Thống kê");
-        btnStats.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnStatsActionPerformed(evt);
-            }
-        });
+        btnStats.setText("Thống kê");
+        btnStats.addActionListener(evt -> btnStatsActionPerformed(evt));
 
         jLabel10.setFont(new java.awt.Font("Arial", 0, 14));
         jLabel10.setText("Lọc:");
@@ -998,11 +916,7 @@ public class SF extends javax.swing.JFrame {
         cbFilter.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{
             "Tất cả", "Xuất sắc (≥9)", "Giỏi (8-8.9)", "Khá (7-7.9)", "Trung bình (5-6.9)", "Yếu (<5)"
         }));
-        cbFilter.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cbFilterActionPerformed(evt);
-            }
-        });
+        cbFilter.addActionListener(evt -> cbFilterActionPerformed(evt));
 
         lblTotal.setFont(new java.awt.Font("Arial", 1, 14));
         lblTotal.setText("Tổng: 0 sinh viên");
@@ -1013,20 +927,8 @@ public class SF extends javax.swing.JFrame {
         lblAverage.setForeground(new Color(76, 175, 80));
 
         btnBulkAdd.setFont(new java.awt.Font("Arial", 1, 13));
-        btnBulkAdd.setText("📝 Thêm hàng loạt");
-        btnBulkAdd.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                bulkAddStudents();
-            }
-        });
-
-        btnRandomStudent.setFont(new java.awt.Font("Arial", 1, 13));
-        btnRandomStudent.setText("🎲 Chọn ngẫu nhiên");
-        btnRandomStudent.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                pickRandomStudent();
-            }
-        });
+        btnBulkAdd.setText("Thêm hàng loạt");
+        btnBulkAdd.addActionListener(evt -> bulkAddStudents());
 
         jLabel11.setFont(new java.awt.Font("Arial", 0, 13));
         jLabel11.setText("Lọc nhanh:");
@@ -1080,7 +982,7 @@ public class SF extends javax.swing.JFrame {
                                                 .addGap(20, 20, 20)
                                                 .addComponent(btnBulkAdd, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
                                                 .addGap(10, 10, 10)
-                                                .addComponent(btnRandomStudent, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                                ))
                                 .addGap(10, 10, 10))
         );
         jPanel3Layout.setVerticalGroup(
@@ -1101,7 +1003,7 @@ public class SF extends javax.swing.JFrame {
                                         .addComponent(jLabel11)
                                         .addComponent(txtQuickFilter, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                         .addComponent(btnBulkAdd)
-                                        .addComponent(btnRandomStudent))
+                                        )
                                 .addGap(10, 10, 10)
                                 .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 520, Short.MAX_VALUE)
                                 .addGap(10, 10, 10)
@@ -1139,15 +1041,22 @@ public class SF extends javax.swing.JFrame {
         pack();
     }
 
+    // ========================================
+    // [TÍNH NĂNG 16] THỐNG KÊ CHI TIẾT
+    // ========================================
     private void btnStatsActionPerformed(java.awt.event.ActionEvent evt) {
         if (list.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Chưa có sinh viên nào trong danh sách để thống kê.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Chưa có sinh viên nào trong danh sách để thống kê.",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         StatsFrame statsWindow = new StatsFrame(list);
         statsWindow.setVisible(true);
     }
 
+    // ========================================
+    // [TÍNH NĂNG 17] CRUD - THÊM MỚI
+    // ========================================
     private void btnAddActionPerformed(java.awt.event.ActionEvent evt) {
         this.txtID.setText("");
         this.txtName.setText("");
@@ -1159,22 +1068,31 @@ public class SF extends javax.swing.JFrame {
         check = 1;
     }
 
+    // ========================================
+    // [TÍNH NĂNG 18] CRUD - CHỈNH SỬA
+    // ========================================
     private void btnEditActionPerformed(java.awt.event.ActionEvent evt) {
         if (list.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Không có sinh viên nào để sửa.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Không có sinh viên nào để sửa.",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         check = -1;
         OnOff(false, true);
     }
 
+    // ========================================
+    // [TÍNH NĂNG 19] CRUD - XÓA
+    // ========================================
     private void btnDeleteActionPerformed(java.awt.event.ActionEvent evt) {
         if (list.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Không có sinh viên nào để xóa.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Không có sinh viên nào để xóa.",
+                    "Thông báo", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         UIManager.put("OptionPane.messageFont", new FontUIResource(new Font("Arial", Font.BOLD, 16)));
-        int n = JOptionPane.showConfirmDialog(panel, "Bạn có chắc chắn muốn xóa không?", "Thông báo", JOptionPane.YES_NO_OPTION);
+        int n = JOptionPane.showConfirmDialog(panel, "Bạn có chắc chắn muốn xóa không?",
+                "Thông báo", JOptionPane.YES_NO_OPTION);
         if (n == JOptionPane.YES_OPTION) {
             list.remove(pos);
             if (!list.isEmpty()) {
@@ -1194,6 +1112,9 @@ public class SF extends javax.swing.JFrame {
         }
     }
 
+    // ========================================
+    // [TÍNH NĂNG 20] CRUD - LƯU
+    // ========================================
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {
         try {
             String ID = this.txtID.getText().trim();
@@ -1205,13 +1126,15 @@ public class SF extends javax.swing.JFrame {
 
             if (ID.isEmpty() || name.isEmpty() || ageText.isEmpty()
                     || diemCCText.isEmpty() || diemGKText.isEmpty() || diemCKText.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin.",
+                        "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
             int age = Integer.parseInt(ageText);
             if (age < 18 || age > 100) {
-                JOptionPane.showMessageDialog(this, "Tuổi phải trong khoảng 18-100.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Tuổi phải trong khoảng 18-100.",
+                        "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
@@ -1220,7 +1143,8 @@ public class SF extends javax.swing.JFrame {
             double diemCK = Double.parseDouble(diemCKText);
 
             if (diemCC < 0 || diemCC > 10 || diemGK < 0 || diemGK > 10 || diemCK < 0 || diemCK > 10) {
-                JOptionPane.showMessageDialog(this, "Điểm phải nằm trong khoảng từ 0 đến 10.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Điểm phải nằm trong khoảng từ 0 đến 10.",
+                        "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
@@ -1228,7 +1152,8 @@ public class SF extends javax.swing.JFrame {
 
             if (check == 1) {
                 if (Search(ID) != null) {
-                    JOptionPane.showMessageDialog(this, "Mã sinh viên đã tồn tại.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Mã sinh viên đã tồn tại.",
+                            "Lỗi", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 this.list.add(newStudent);
@@ -1237,7 +1162,8 @@ public class SF extends javax.swing.JFrame {
             } else {
                 Student existingStudentWithNewId = Search(ID);
                 if (existingStudentWithNewId != null && !existingStudentWithNewId.equals(list.get(pos))) {
-                    JOptionPane.showMessageDialog(this, "Mã sinh viên mới đã tồn tại cho sinh viên khác.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Mã sinh viên mới đã tồn tại cho sinh viên khác.",
+                            "Lỗi", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 this.list.set(pos, newStudent);
@@ -1250,19 +1176,27 @@ public class SF extends javax.swing.JFrame {
             markAsChanged();
 
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Tuổi và Điểm phải là các số hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Tuổi và Điểm phải là các số hợp lệ.",
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Đã xảy ra lỗi: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Đã xảy ra lỗi: " + e.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
     }
 
+    // ========================================
+    // [TÍNH NĂNG 21] CRUD - HỦY
+    // ========================================
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {
         View();
         OnOff(true, false);
         updateStatus("Đã hủy thao tác");
     }
 
+    // ========================================
+    // [TÍNH NĂNG 22] CHỌN TỪ BẢNG - CHUỘT => An
+    // ========================================
     private void tblStudentMouseClicked(java.awt.event.MouseEvent evt) {
         int row = this.tblStudent.getSelectedRow();
         if (row != -1) {
@@ -1275,6 +1209,9 @@ public class SF extends javax.swing.JFrame {
         }
     }
 
+    // ========================================
+    // [TÍNH NĂNG 23] CHỌN TỪ BẢNG - PHÍM => An
+    // ========================================
     private void tblStudentKeyReleased(java.awt.event.KeyEvent evt) {
         int row = this.tblStudent.getSelectedRow();
         if (row != -1) {
@@ -1287,14 +1224,23 @@ public class SF extends javax.swing.JFrame {
         }
     }
 
+    // ========================================
+    // [TÍNH NĂNG 24] TÌM KIẾM CƠ BẢN
+    // ========================================
     private void btnSearchActionPerformed(java.awt.event.ActionEvent evt) {
         ViewTable(this.txtSearchName.getText());
     }
 
+    // ========================================
+    // [TÍNH NĂNG 25] LỌC THEO XẾP LOẠI
+    // ========================================
     private void cbFilterActionPerformed(java.awt.event.ActionEvent evt) {
         ViewTable(this.txtSearchName.getText());
     }
 
+    // ========================================
+    // [TÍNH NĂNG 26] SẮP XẾP ĐA TIÊU CHÍ
+    // ========================================
     private void cbSortActionPerformed(java.awt.event.ActionEvent evt) {
         String loai = (String) cbSort.getSelectedItem();
         if (loai == null) {
@@ -1331,20 +1277,20 @@ public class SF extends javax.swing.JFrame {
         updateStatus("Đã sắp xếp danh sách");
     }
 
+    // ========================================
+    // MAIN - KHỞI CHẠY ỨNG DỤNG
+    // ========================================
     public static void main(String args[]) {
-        // Thiết lập Look and Feel hệ thống
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ex) {
             java.util.logging.Logger.getLogger(SF.class.getName())
-                .log(java.util.logging.Level.SEVERE, null, ex);
+                    .log(java.util.logging.Level.SEVERE, null, ex);
         }
 
-        // Khởi chạy ứng dụng
         java.awt.EventQueue.invokeLater(() -> {
             SF frame = new SF();
             frame.setVisible(true);
         });
     }
 }
-
